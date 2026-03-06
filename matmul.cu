@@ -17,6 +17,19 @@ void cpu_matmul(float* A, float* B, float* C, int n) {
     }
 }
 
+__global__ void naive_matmul(float* A, float* B, float* C, int n) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+    
+    if (row < n && col < n) {
+        float sum = 0.0f;
+        for (int k = 0; k < n; k++) {
+            sum += A[row * n + k] * B[k * n + col];
+        }
+        C[row * n + col] = sum;
+    }
+}
+
 void init_matrix(float* mat, int n) {
     for (int i = 0; i < n * n; i++) {
         mat[i] = (float)(rand() % 100) / 100.0f;
@@ -54,5 +67,37 @@ int main() {
     free(A); 
     free(B); 
     free(C_cpu);
+    dim3 blockDim(16, 16);        
+    dim3 gridDim(N/16, N/16);     
+    
+    float *d_A, *d_B, *d_C_naive;
+    cudaMalloc(&d_A, size);
+    cudaMalloc(&d_B, size);
+    cudaMalloc(&d_C_naive, size);
+    
+    cudaMemcpy(d_A, A, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(d_B, B, size, cudaMemcpyHostToDevice);
+    
+    cudaEvent_t start_gpu, stop_gpu;
+    cudaEventCreate(&start_gpu);
+    cudaEventCreate(&stop_gpu);
+    
+    cudaEventRecord(start_gpu);
+    naive_matmul<<<gridDim, blockDim>>>(d_A, d_B, d_C_naive, N);
+    cudaEventRecord(stop_gpu);
+    cudaEventSynchronize(stop_gpu);
+    
+    float naive_gpu_time;
+    cudaEventElapsedTime(&naive_gpu_time, start_gpu, stop_gpu);
+    printf("Naive GPU time: %.2f ms\n", naive_gpu_time);
+    
+    float* C_naive = (float*)malloc(size);
+    cudaMemcpy(C_naive, d_C_naive, size, cudaMemcpyDeviceToHost);
+    
+    if (matrices_equal(C_cpu, C_naive, N)) {
+        printf("Naive GPU result: CORRECT\n");
+    } else {
+        printf("Naive GPU result: WRONG\n");
+    }
     return 0;
 }
