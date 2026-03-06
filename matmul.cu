@@ -23,6 +23,17 @@ void init_matrix(float* mat, int n) {
     }
 }
 
+bool matrices_equal(float* A, float* B, int n, float tol = 1e-3) {
+    for (int i = 0; i < n * n; i++) {
+        if (fabs(A[i] - B[i]) > tol) {
+            printf("Mismatch at index %d: %f vs %f\n", i, A[i], B[i]);
+            return false;
+        }
+    }
+    return true;
+}
+
+
 int main() {
     int size = N * N * sizeof(float);
     
