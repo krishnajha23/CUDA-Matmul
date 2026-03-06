@@ -33,7 +33,6 @@ bool matrices_equal(float* A, float* B, int n, float tol = 1e-3) {
     return true;
 }
 
-
 int main() {
     int size = N * N * sizeof(float);
     
