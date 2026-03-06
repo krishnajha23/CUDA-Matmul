@@ -52,6 +52,7 @@ int main() {
     float* A = (float*)malloc(size);
     float* B = (float*)malloc(size);
     float* C_cpu = (float*)malloc(size);
+    float* C_naive = (float*)malloc(size);  // allocate here
     
     srand(42);
     init_matrix(A, N);
@@ -60,15 +61,11 @@ int main() {
     clock_t start = clock();
     cpu_matmul(A, B, C_cpu, N);
     clock_t end = clock();
-    
     double cpu_time = ((double)(end - start)) / CLOCKS_PER_SEC * 1000;
     printf("CPU time: %.2f ms\n", cpu_time);
     
-    free(A); 
-    free(B); 
-    free(C_cpu);
-    dim3 blockDim(16, 16);        
-    dim3 gridDim(N/16, N/16);     
+    dim3 blockDim(16, 16);
+    dim3 gridDim(N/16, N/16);
     
     float *d_A, *d_B, *d_C_naive;
     cudaMalloc(&d_A, size);
@@ -91,13 +88,20 @@ int main() {
     cudaEventElapsedTime(&naive_gpu_time, start_gpu, stop_gpu);
     printf("Naive GPU time: %.2f ms\n", naive_gpu_time);
     
-    float* C_naive = (float*)malloc(size);
     cudaMemcpy(C_naive, d_C_naive, size, cudaMemcpyDeviceToHost);
-    
     if (matrices_equal(C_cpu, C_naive, N)) {
         printf("Naive GPU result: CORRECT\n");
     } else {
         printf("Naive GPU result: WRONG\n");
     }
+    
+    free(A);
+    free(B);
+    free(C_cpu);
+    free(C_naive);
+    cudaFree(d_A);
+    cudaFree(d_B);
+    cudaFree(d_C_naive);
+    
     return 0;
 }
